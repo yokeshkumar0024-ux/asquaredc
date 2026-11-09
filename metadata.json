@@ -1,0 +1,6 @@
+{
+  "name": "ChallanPro ERP - Enterprise Delivery Challan Management System",
+  "description": "Comprehensive, multi-tenant Indian enterprise Delivery Challan ERP with 12 challan types, partial delivery, PO/SO linking, inventory, e-way bills, GST compliance, and approval workflows.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
