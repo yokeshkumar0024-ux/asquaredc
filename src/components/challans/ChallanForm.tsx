@@ -4,14 +4,11 @@ import {
   DeliveryChallan,
   ChallanItem,
   TransportMode,
-  Customer,
-  Supplier,
   Product,
   Warehouse,
-  SalesOrder,
 } from '../../types/erp';
 import { ERPStorage } from '../../services/storage';
-import { calculateItemTaxes, formatINR } from '../../services/gstCalculator';
+import { calculateItemTaxes, formatINR, INDIAN_STATES, getStateNameByCode } from '../../services/gstCalculator';
 import {
   Building2,
   Calendar,
@@ -20,7 +17,6 @@ import {
   AlertCircle,
   Plus,
   Trash2,
-  Barcode,
   Save,
   ArrowLeft,
   CheckCircle,
@@ -28,7 +24,6 @@ import {
 
 interface ChallanFormProps {
   initialChallan?: DeliveryChallan | null;
-  fromSalesOrder?: SalesOrder | null;
   onSave: (savedChallan: DeliveryChallan) => void;
   onCancel: () => void;
 }
@@ -39,7 +34,7 @@ export const CHALLAN_TYPE_INFO: Record<
 > = {
   STANDARD_DELIVERY: {
     label: 'Standard Delivery Challan',
-    description: 'Outward goods delivery against customer sales order or commercial supply contract.',
+    description: 'Outward goods delivery against customer sales or commercial supply contract.',
     requiresReturnDate: false,
     isStockTransfer: false,
     badgeColor: 'bg-blue-100 text-blue-800',
@@ -125,15 +120,12 @@ export const CHALLAN_TYPE_INFO: Record<
 
 export const ChallanForm: React.FC<ChallanFormProps> = ({
   initialChallan,
-  fromSalesOrder,
   onSave,
   onCancel,
 }) => {
   const company = ERPStorage.getCompany();
   const warehouses = ERPStorage.getWarehouses();
   const branches = ERPStorage.getBranches();
-  const customers = ERPStorage.getCustomers();
-  const suppliers = ERPStorage.getSuppliers();
   const products = ERPStorage.getProducts();
 
   // Basic Details
@@ -160,12 +152,6 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
   );
 
   // References
-  const [salesOrderId, setSalesOrderId] = useState<string>(
-    initialChallan?.salesOrderId || fromSalesOrder?.id || ''
-  );
-  const [salesOrderNumber, setSalesOrderNumber] = useState<string>(
-    initialChallan?.salesOrderNumber || fromSalesOrder?.soNumber || ''
-  );
   const [referenceChallanNumber, setReferenceChallanNumber] = useState<string>(
     initialChallan?.referenceChallanNumber || ''
   );
@@ -173,18 +159,15 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
     initialChallan?.expectedReturnDate || ''
   );
 
-  // Party Selection
-  const [partyType, setPartyType] = useState<'CUSTOMER' | 'SUPPLIER' | 'BRANCH'>(
-    initialChallan?.supplierId ? 'SUPPLIER' : 'CUSTOMER'
+  // Direct Consignee / Party Details (No Party Masters needed)
+  const [customerName, setCustomerName] = useState<string>(
+    initialChallan?.customerName || initialChallan?.supplierName || ''
   );
-  const [customerId, setCustomerId] = useState<string>(
-    initialChallan?.customerId || fromSalesOrder?.customerId || customers[0]?.id || ''
+  const [customerGstin, setCustomerGstin] = useState<string>(
+    initialChallan?.customerGstin || initialChallan?.supplierGstin || ''
   );
-  const [supplierId, setSupplierId] = useState<string>(
-    initialChallan?.supplierId || suppliers[0]?.id || ''
-  );
-  const [selectedShippingAddressId, setSelectedShippingAddressId] = useState<string>(
-    initialChallan?.shippingAddressId || ''
+  const [customerAddress, setCustomerAddress] = useState<string>(
+    initialChallan?.customerAddress || ''
   );
   const [shippingAddressText, setShippingAddressText] = useState<string>(
     initialChallan?.shippingAddressText || ''
@@ -204,33 +187,7 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
     if (initialChallan?.items && initialChallan.items.length > 0) {
       return initialChallan.items;
     }
-    if (fromSalesOrder?.items && fromSalesOrder.items.length > 0) {
-      return fromSalesOrder.items.map((soItem, idx) => {
-        const prod = products.find((p) => p.id === soItem.productId);
-        const taxable = soItem.pendingQty * soItem.unitPrice;
-        const taxes = calculateItemTaxes(taxable, soItem.taxRate, company.stateCode, company.stateCode);
-        return {
-          id: `item_${idx + 1}`,
-          productId: soItem.productId,
-          productCode: soItem.productCode,
-          productName: soItem.productName,
-          hsnCode: soItem.hsnCode,
-          uom: soItem.uom,
-          orderedQty: soItem.orderedQty,
-          dispatchQty: soItem.pendingQty,
-          deliveredQty: 0,
-          pendingQty: soItem.pendingQty,
-          returnedQty: 0,
-          damagedQty: 0,
-          rejectedQty: 0,
-          unitPrice: soItem.unitPrice,
-          taxRate: soItem.taxRate,
-          taxableAmount: taxable,
-          ...taxes,
-        };
-      });
-    }
-    // Default first product
+    // Default first item line
     const p1 = products[0];
     const taxable = (p1?.unitPrice || 1000) * 1;
     const taxes = calculateItemTaxes(taxable, p1?.taxRate || 18, company.stateCode, company.stateCode);
@@ -238,8 +195,8 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
       {
         id: 'item_1',
         productId: p1?.id || 'prod_01',
-        productCode: p1?.itemCode || 'CODE-1',
-        productName: p1?.name || 'Product 1',
+        productCode: p1?.itemCode || 'ITM-01',
+        productName: p1?.name || '',
         hsnCode: p1?.hsnCode || '84818030',
         uom: p1?.uom || 'PCS',
         orderedQty: 1,
@@ -260,7 +217,7 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
 
   // Transport Details
   const [transporterName, setTransporterName] = useState<string>(
-    initialChallan?.transportDetails?.transporterName || 'VRL Logistics Limited'
+    initialChallan?.transportDetails?.transporterName || ''
   );
   const [transporterGstin, setTransporterGstin] = useState<string>(
     initialChallan?.transportDetails?.transporterGstin || ''
@@ -272,7 +229,7 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
     initialChallan?.transportDetails?.vehicleNumber || ''
   );
   const [vehicleType, setVehicleType] = useState<string>(
-    initialChallan?.transportDetails?.vehicleType || 'Tata 407 LCV'
+    initialChallan?.transportDetails?.vehicleType || ''
   );
   const [driverName, setDriverName] = useState<string>(
     initialChallan?.transportDetails?.driverName || ''
@@ -284,7 +241,7 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
     initialChallan?.transportDetails?.lrNumber || ''
   );
   const [distanceKm, setDistanceKm] = useState<number>(
-    initialChallan?.transportDetails?.distanceKm || 120
+    initialChallan?.transportDetails?.distanceKm || 0
   );
   const [freightCharges, setFreightCharges] = useState<number>(
     initialChallan?.transportDetails?.freightCharges || 0
@@ -310,31 +267,6 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
       setChallanNumber(ERPStorage.getNextDocumentNumber(newType));
     }
   };
-
-  // Sync Customer Address
-  useEffect(() => {
-    if (partyType === 'CUSTOMER' && customerId) {
-      const cust = customers.find((c) => c.id === customerId);
-      if (cust) {
-        if (!selectedShippingAddressId && cust.shippingAddresses.length > 0) {
-          const defaultShip = cust.shippingAddresses.find((s) => s.isDefault) || cust.shippingAddresses[0];
-          setSelectedShippingAddressId(defaultShip.id);
-          setShippingAddressText(defaultShip.address);
-          setShippingCity(defaultShip.city);
-          setShippingState(defaultShip.state);
-          setShippingStateCode(defaultShip.stateCode);
-        } else if (selectedShippingAddressId) {
-          const ship = cust.shippingAddresses.find((s) => s.id === selectedShippingAddressId);
-          if (ship) {
-            setShippingAddressText(ship.address);
-            setShippingCity(ship.city);
-            setShippingState(ship.state);
-            setShippingStateCode(ship.stateCode);
-          }
-        }
-      }
-    }
-  }, [customerId, selectedShippingAddressId, partyType, customers]);
 
   // Recalculate taxes for all items whenever shipping state code changes
   useEffect(() => {
@@ -396,26 +328,40 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
     });
   };
 
-  const handleItemFieldChange = (index: number, field: 'batchNumber' | 'remarks', val: string) => {
+  const handleItemFieldChange = (index: number, field: string, val: any) => {
     setItems((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], [field]: val };
+      const item = { ...next[index], [field]: val };
+      if (field === 'taxRate') {
+        const taxable = item.dispatchQty * item.unitPrice;
+        const taxes = calculateItemTaxes(taxable, Number(val), company.stateCode, shippingStateCode || company.stateCode);
+        item.taxRate = Number(val);
+        item.taxableAmount = taxable;
+        item.cgstRate = taxes.cgstRate;
+        item.cgstAmount = taxes.cgstAmount;
+        item.sgstRate = taxes.sgstRate;
+        item.sgstAmount = taxes.sgstAmount;
+        item.igstRate = taxes.igstRate;
+        item.igstAmount = taxes.igstAmount;
+        item.totalAmount = taxable + taxes.cgstAmount + taxes.sgstAmount + taxes.igstAmount;
+      }
+      next[index] = item;
       return next;
     });
   };
 
   const addItemRow = () => {
     const p1 = products[0];
-    const taxable = (p1?.unitPrice || 1000) * 1;
-    const taxes = calculateItemTaxes(taxable, p1?.taxRate || 18, company.stateCode, shippingStateCode || company.stateCode);
+    const taxable = 1000;
+    const taxes = calculateItemTaxes(taxable, 18, company.stateCode, shippingStateCode || company.stateCode);
 
     setItems((prev) => [
       ...prev,
       {
         id: `item_${Date.now()}`,
-        productId: p1?.id || 'prod_01',
-        productCode: p1?.itemCode || 'CODE-1',
-        productName: p1?.name || 'Product',
+        productId: p1?.id || `prod_${Date.now()}`,
+        productCode: p1?.itemCode || `ITM-${prev.length + 1}`,
+        productName: p1?.name || '',
         hsnCode: p1?.hsnCode || '84818030',
         uom: p1?.uom || 'PCS',
         orderedQty: 1,
@@ -429,6 +375,7 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
         taxRate: p1?.taxRate || 18,
         taxableAmount: taxable,
         ...taxes,
+        totalAmount: taxable + taxes.cgstAmount + taxes.sgstAmount + taxes.igstAmount,
         batchNumber: '',
       },
     ]);
@@ -462,9 +409,6 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
       return;
     }
 
-    const currentCustomer = customers.find((c) => c.id === customerId);
-    const currentSupplier = suppliers.find((s) => s.id === supplierId);
-
     const newChallan: DeliveryChallan = {
       id: initialChallan?.id || `dc_${Date.now()}`,
       companyId: company.id,
@@ -479,24 +423,16 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
       status: initialChallan?.status || 'READY_FOR_DISPATCH',
 
       referenceChallanNumber,
-      salesOrderId: salesOrderId || undefined,
-      salesOrderNumber: salesOrderNumber || undefined,
       expectedReturnDate: CHALLAN_TYPE_INFO[challanType].requiresReturnDate ? expectedReturnDate : undefined,
 
-      customerId: partyType === 'CUSTOMER' ? currentCustomer?.id : undefined,
-      customerName: partyType === 'CUSTOMER' ? currentCustomer?.name : undefined,
-      customerGstin: partyType === 'CUSTOMER' ? currentCustomer?.gstin : undefined,
-      customerAddress: partyType === 'CUSTOMER' ? currentCustomer?.billingAddress : undefined,
-      customerState: partyType === 'CUSTOMER' ? currentCustomer?.billingState : undefined,
-      customerStateCode: partyType === 'CUSTOMER' ? currentCustomer?.billingStateCode : undefined,
+      customerName: customerName.trim() || 'Direct Consignee',
+      customerGstin: customerGstin.trim() || undefined,
+      customerAddress: customerAddress.trim() || undefined,
+      customerState: shippingState,
+      customerStateCode: shippingStateCode,
 
-      supplierId: partyType === 'SUPPLIER' ? currentSupplier?.id : undefined,
-      supplierName: partyType === 'SUPPLIER' ? currentSupplier?.name : undefined,
-      supplierGstin: partyType === 'SUPPLIER' ? currentSupplier?.gstin : undefined,
-
-      shippingAddressId: selectedShippingAddressId,
-      shippingAddressText,
-      shippingCity,
+      shippingAddressText: shippingAddressText.trim() || customerAddress.trim() || 'Site Address',
+      shippingCity: shippingCity.trim() || shippingState,
       shippingState,
       shippingStateCode,
 
@@ -559,6 +495,32 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
       updatedAt: new Date().toISOString(),
       updatedBy: ERPStorage.getCurrentUser().name,
     };
+
+    // Auto-register typed products in catalog if not already existing
+    items.forEach((item) => {
+      const existing = products.find((p) => p.id === item.productId || (p.name && item.productName && p.name.toLowerCase() === item.productName.toLowerCase()));
+      if (!existing && item.productName && item.productName.trim()) {
+        const prodId = item.productId || `prod_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
+        item.productId = prodId;
+        ERPStorage.saveProduct({
+          id: prodId,
+          companyId: company.id,
+          itemCode: item.productCode || `ITM-${Date.now().toString().slice(-4)}`,
+          name: item.productName.trim(),
+          description: `${item.productName.trim()} - HSN ${item.hsnCode}`,
+          hsnCode: item.hsnCode || '84818030',
+          uom: item.uom || 'PCS',
+          unitPrice: item.unitPrice || 0,
+          taxRate: item.taxRate || 18,
+          hasBatchTracking: true,
+          hasSerialTracking: false,
+          hasExpiryTracking: false,
+          minStockAlert: 5,
+          barcode: `890${Date.now().toString().slice(-10)}`,
+          category: 'General Goods',
+        });
+      }
+    });
 
     // Save and adjust stock
     ERPStorage.saveChallan(newChallan, initialChallan ? 'Edited challan parameters' : 'Created new Delivery Challan');
@@ -722,104 +684,94 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
           )}
         </div>
 
-        {/* Section 3: Party Details (Customer or Supplier) */}
+        {/* Section 2: Consignee & Party Details (Direct Input) */}
         {!CHALLAN_TYPE_INFO[challanType].isStockTransfer && (
           <div className="border border-slate-200 rounded-xl p-4 space-y-4">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-blue-600" /> 2. Party & Delivery Address Details
+                <Building2 className="w-4 h-4 text-blue-600" /> 2. Consignee / Party & Destination Details
               </label>
+              <span className="text-[11px] text-slate-500">Direct Entry (No party master setup needed)</span>
+            </div>
 
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold text-slate-600">Party Type:</label>
-                <div className="inline-flex rounded-lg border border-slate-300 p-0.5 bg-slate-100 text-xs font-medium">
-                  <button
-                    type="button"
-                    onClick={() => setPartyType('CUSTOMER')}
-                    className={`px-3 py-1 rounded-md transition-all ${
-                      partyType === 'CUSTOMER' ? 'bg-white text-blue-700 font-bold shadow-xs' : 'text-slate-600'
-                    }`}
-                  >
-                    Customer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPartyType('SUPPLIER')}
-                    className={`px-3 py-1 rounded-md transition-all ${
-                      partyType === 'SUPPLIER' ? 'bg-white text-blue-700 font-bold shadow-xs' : 'text-slate-600'
-                    }`}
-                  >
-                    Supplier / Vendor
-                  </button>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Consignee / Party Full Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="e.g. Tata Motors Ltd / Precision Engineering Works"
+                  className="w-full text-xs p-2 rounded-lg border border-slate-300 bg-white font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Party GSTIN (Optional)</label>
+                <input
+                  type="text"
+                  maxLength={15}
+                  value={customerGstin}
+                  onChange={(e) => setCustomerGstin(e.target.value.toUpperCase())}
+                  placeholder="e.g. 27AAACT2727Q1ZT"
+                  className="w-full text-xs p-2 rounded-lg border border-slate-300 bg-white font-mono font-bold uppercase focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Destination State & Code</label>
+                <select
+                  value={shippingStateCode}
+                  onChange={(e) => {
+                    const code = e.target.value;
+                    setShippingStateCode(code);
+                    setShippingState(getStateNameByCode(code));
+                  }}
+                  className="w-full text-xs p-2 rounded-lg border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                  {Object.entries(INDIAN_STATES).map(([code, name]) => (
+                    <option key={code} value={code}>
+                      {code} - {name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {partyType === 'CUSTOMER' ? (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Select Customer</label>
-                  <select
-                    value={customerId}
-                    onChange={(e) => {
-                      setCustomerId(e.target.value);
-                      setSelectedShippingAddressId('');
-                    }}
-                    className="w-full text-xs p-2 rounded-lg border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  >
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.gstin})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Select Supplier</label>
-                  <select
-                    value={supplierId}
-                    onChange={(e) => setSupplierId(e.target.value)}
-                    className="w-full text-xs p-2 rounded-lg border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  >
-                    {suppliers.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} ({s.gstin})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {partyType === 'CUSTOMER' && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Shipping Destination Site</label>
-                  <select
-                    value={selectedShippingAddressId}
-                    onChange={(e) => setSelectedShippingAddressId(e.target.value)}
-                    className="w-full text-xs p-2 rounded-lg border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  >
-                    {customers
-                      .find((c) => c.id === customerId)
-                      ?.shippingAddresses.map((ship) => (
-                        <option key={ship.id} value={ship.id}>
-                          {ship.title} - {ship.city} ({ship.state})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              )}
-
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Reference Order / PO / SO No.
-                </label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Destination City</label>
                 <input
                   type="text"
-                  value={salesOrderNumber}
-                  onChange={(e) => setSalesOrderNumber(e.target.value)}
-                  placeholder="e.g. SO/26-27/0088 or PO/4412"
-                  className="w-full text-xs p-2 rounded-lg border border-slate-300 bg-white font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  value={shippingCity}
+                  onChange={(e) => setShippingCity(e.target.value)}
+                  placeholder="e.g. Pune / Bengaluru"
+                  className="w-full text-xs p-2 rounded-lg border border-slate-300 bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Billed-To Office Address</label>
+                <input
+                  type="text"
+                  value={customerAddress}
+                  onChange={(e) => setCustomerAddress(e.target.value)}
+                  placeholder="Corporate / registered billing address"
+                  className="w-full text-xs p-2 rounded-lg border border-slate-300 bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Shipped-To / Site Delivery Address</label>
+                <input
+                  type="text"
+                  value={shippingAddressText}
+                  onChange={(e) => setShippingAddressText(e.target.value)}
+                  placeholder="Factory gate / site unloading address"
+                  className="w-full text-xs p-2 rounded-lg border border-slate-300 bg-white"
                 />
               </div>
             </div>
@@ -881,36 +833,57 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
                 {items.map((item, idx) => (
                   <tr key={item.id} className="hover:bg-slate-50/50">
                     <td className="p-3 text-center font-mono text-slate-400">{idx + 1}</td>
-                    <td className="p-3 space-y-1">
-                      <select
-                        value={item.productId}
-                        onChange={(e) => handleProductChange(idx, e.target.value)}
-                        className="w-full text-xs p-1.5 border border-slate-300 rounded font-semibold text-slate-800 bg-white"
-                      >
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} ({p.itemCode})
-                          </option>
-                        ))}
-                      </select>
+                    <td className="p-3 space-y-1.5 min-w-[220px]">
+                      <input
+                        type="text"
+                        required
+                        value={item.productName}
+                        onChange={(e) => handleItemFieldChange(idx, 'productName', e.target.value)}
+                        placeholder="Type item name / description *"
+                        className="w-full text-xs p-1.5 border border-slate-300 rounded-lg font-bold text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                      {products.length > 0 && (
+                        <select
+                          value={products.some((p) => p.name === item.productName) ? item.productId : ''}
+                          onChange={(e) => {
+                            if (e.target.value) handleProductChange(idx, e.target.value);
+                          }}
+                          className="w-full text-[10px] p-1 border border-slate-200 rounded text-slate-500 bg-slate-50"
+                        >
+                          <option value="">Or select from registered catalog...</option>
+                          {products.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} ({p.itemCode})
+                            </option>
+                          ))}
+                        </select>
+                      )}
                       <div className="flex gap-2">
                         <input
                           type="text"
                           value={item.batchNumber || ''}
                           onChange={(e) => handleItemFieldChange(idx, 'batchNumber', e.target.value)}
                           placeholder="Batch / Heat No."
-                          className="w-1/2 text-[11px] p-1 border border-slate-200 rounded font-mono"
+                          className="w-1/2 text-[10px] p-1 border border-slate-200 rounded font-mono"
                         />
                         <input
                           type="text"
                           value={item.remarks || ''}
                           onChange={(e) => handleItemFieldChange(idx, 'remarks', e.target.value)}
                           placeholder="Line remarks"
-                          className="w-1/2 text-[11px] p-1 border border-slate-200 rounded"
+                          className="w-1/2 text-[10px] p-1 border border-slate-200 rounded"
                         />
                       </div>
                     </td>
-                    <td className="p-3 text-center font-mono">{item.hsnCode}</td>
+                    <td className="p-3">
+                      <input
+                        type="text"
+                        value={item.hsnCode}
+                        onChange={(e) => handleItemFieldChange(idx, 'hsnCode', e.target.value)}
+                        placeholder="HSN"
+                        className="w-full p-1.5 border border-slate-300 rounded text-center font-mono font-bold text-xs"
+                      />
+                    </td>
                     <td className="p-3">
                       <input
                         type="number"
@@ -920,7 +893,22 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
                         className="w-full p-1.5 border border-blue-300 rounded text-center font-mono font-bold text-slate-900 bg-white"
                       />
                     </td>
-                    <td className="p-3 text-center font-mono">{item.uom}</td>
+                    <td className="p-3">
+                      <select
+                        value={item.uom}
+                        onChange={(e) => handleItemFieldChange(idx, 'uom', e.target.value)}
+                        className="w-full p-1.5 border border-slate-300 rounded text-center font-mono font-bold text-xs bg-white"
+                      >
+                        <option value="PCS">PCS</option>
+                        <option value="NOS">NOS</option>
+                        <option value="KGS">KGS</option>
+                        <option value="MTR">MTR</option>
+                        <option value="BOX">BOX</option>
+                        <option value="SET">SET</option>
+                        <option value="LTR">LTR</option>
+                        <option value="PKT">PKT</option>
+                      </select>
+                    </td>
                     <td className="p-3">
                       <input
                         type="number"
@@ -932,7 +920,19 @@ export const ChallanForm: React.FC<ChallanFormProps> = ({
                       />
                     </td>
                     <td className="p-3 text-right font-mono font-semibold">{item.taxableAmount.toFixed(2)}</td>
-                    <td className="p-3 text-center font-mono font-bold text-slate-700">{item.taxRate}%</td>
+                    <td className="p-3">
+                      <select
+                        value={item.taxRate}
+                        onChange={(e) => handleItemFieldChange(idx, 'taxRate', Number(e.target.value))}
+                        className="w-full p-1.5 border border-slate-300 rounded text-center font-mono font-bold text-slate-700 bg-white"
+                      >
+                        <option value="0">0%</option>
+                        <option value="5">5%</option>
+                        <option value="12">12%</option>
+                        <option value="18">18%</option>
+                        <option value="28">28%</option>
+                      </select>
+                    </td>
                     <td className="p-3 text-right font-mono font-bold text-blue-900">{item.totalAmount.toFixed(2)}</td>
                     <td className="p-3 text-center">
                       <button

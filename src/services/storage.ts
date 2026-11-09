@@ -35,7 +35,7 @@ import {
   INITIAL_USERS,
 } from './mockData';
 
-const STORAGE_PREFIX = 'challanpro_erp_v1_';
+const STORAGE_PREFIX = 'challanpro_erp_v3_clean_';
 
 export interface DatabaseBackup {
   backupId: string;

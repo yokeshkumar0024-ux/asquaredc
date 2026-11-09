@@ -87,10 +87,10 @@ export const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({
             <Plus className="w-4 h-4" /> Create Delivery Challan
           </button>
           <button
-            onClick={() => onNavigateTab('ORDERS')}
+            onClick={() => onNavigateTab('INVENTORY')}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold border border-slate-700 transition-all"
           >
-            <Package className="w-4 h-4" /> Sales Orders
+            <Warehouse className="w-4 h-4" /> Multi-Warehouse Stock
           </button>
         </div>
       </div>
@@ -268,42 +268,58 @@ export const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({
           </div>
 
           <div className="divide-y divide-slate-100 text-xs">
-            {challans.slice(0, 5).map((c) => (
-              <div
-                key={c.id}
-                onClick={() => onViewChallan(c)}
-                className="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-blue-900">{c.challanNumber}</span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase bg-slate-100 text-slate-700">
-                      {c.challanType.replace(/_/g, ' ')}
+            {challans.length === 0 ? (
+              <div className="p-12 text-center text-slate-500">
+                <Truck className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <div className="font-bold text-slate-800 text-sm">No Delivery Challans Created Yet</div>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                  Your logistics portal is clean and ready. Click below to create your first Rule-55 delivery challan.
+                </p>
+                <button
+                  onClick={onNewChallan}
+                  className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-md"
+                >
+                  <Plus className="w-4 h-4" /> Create First Challan
+                </button>
+              </div>
+            ) : (
+              challans.slice(0, 5).map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => onViewChallan(c)}
+                  className="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-blue-900">{c.challanNumber}</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase bg-slate-100 text-slate-700">
+                        {c.challanType.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <div className="font-semibold text-slate-800">{c.customerName || c.supplierName || 'Internal Transfer'}</div>
+                    <div className="text-[11px] text-slate-500">
+                      Vehicle: <span className="font-mono font-bold text-slate-700">{c.transportDetails.vehicleNumber}</span> |{' '}
+                      {c.transportDetails.transporterName}
+                    </div>
+                  </div>
+
+                  <div className="text-right space-y-1">
+                    <div className="font-mono font-bold text-slate-900 text-sm">{formatINR(c.totalAmount)}</div>
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        c.status === 'DELIVERED'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : c.status === 'PARTIALLY_DELIVERED'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}
+                    >
+                      {c.status.replace(/_/g, ' ')}
                     </span>
                   </div>
-                  <div className="font-semibold text-slate-800">{c.customerName || c.supplierName || 'Internal Transfer'}</div>
-                  <div className="text-[11px] text-slate-500">
-                    Vehicle: <span className="font-mono font-bold text-slate-700">{c.transportDetails.vehicleNumber}</span> |{' '}
-                    {c.transportDetails.transporterName}
-                  </div>
                 </div>
-
-                <div className="text-right space-y-1">
-                  <div className="font-mono font-bold text-slate-900 text-sm">{formatINR(c.totalAmount)}</div>
-                  <span
-                    className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      c.status === 'DELIVERED'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : c.status === 'PARTIALLY_DELIVERED'
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}
-                  >
-                    {c.status.replace(/_/g, ' ')}
-                  </span>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -367,17 +383,30 @@ export const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({
             <h3 className="font-bold text-xs uppercase tracking-wider text-slate-700">
               High Movement Products
             </h3>
-            <div className="divide-y divide-slate-100">
-              {products.slice(0, 3).map((p) => (
-                <div key={p.id} className="py-2 flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-slate-800 line-clamp-1">{p.name}</div>
-                    <div className="text-[10px] text-slate-400 font-mono">HSN: {p.hsnCode}</div>
+            {products.length === 0 ? (
+              <div className="py-6 text-center text-slate-400">
+                <Package className="w-8 h-8 mx-auto mb-1 opacity-40 text-slate-400" />
+                <p className="text-[11px] text-slate-500 font-medium">No products in inventory yet</p>
+                <button
+                  onClick={() => onNavigateTab('INVENTORY')}
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Products
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {products.slice(0, 3).map((p) => (
+                  <div key={p.id} className="py-2 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-slate-800 line-clamp-1">{p.name}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">HSN: {p.hsnCode}</div>
+                    </div>
+                    <div className="font-mono font-bold text-slate-900">{formatINR(p.unitPrice)}</div>
                   </div>
-                  <div className="font-mono font-bold text-slate-900">{formatINR(p.unitPrice)}</div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

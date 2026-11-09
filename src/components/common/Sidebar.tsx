@@ -2,36 +2,29 @@ import React from 'react';
 import {
   LayoutDashboard,
   Truck,
-  ShoppingCart,
   Warehouse,
   RotateCcw,
-  Users,
   FileSpreadsheet,
   Settings,
   ShieldCheck,
-  UserCheck,
 } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
   onSelectTab: (tab: string) => void;
-  isCustomerPortalActive: boolean;
   onOpenAudit: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onSelectTab,
-  isCustomerPortalActive,
   onOpenAudit,
 }) => {
   const navItems = [
     { id: 'DASHBOARD', label: 'Executive Dashboard', icon: LayoutDashboard },
     { id: 'CHALLANS', label: 'Delivery Challans (12 Types)', icon: Truck },
-    { id: 'ORDERS', label: 'Orders (PO & SO)', icon: ShoppingCart },
     { id: 'INVENTORY', label: 'Multi-Warehouse & Stock', icon: Warehouse },
     { id: 'RETURNS', label: 'Return Management & QC', icon: RotateCcw },
-    { id: 'MASTERS', label: 'Parties (Customers & Vendors)', icon: Users },
     { id: 'REPORTS', label: '20 Advanced Reports', icon: FileSpreadsheet },
     { id: 'SETTINGS', label: 'Settings & Backups', icon: Settings },
   ];
@@ -46,7 +39,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = activeTab === item.id && !isCustomerPortalActive;
+          const isActive = activeTab === item.id;
           return (
             <button
               key={item.id}
@@ -64,24 +57,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
 
         <div className="pt-4 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          Portals & Compliance
+          Compliance & Verification
         </div>
 
         <button
-          onClick={() => onSelectTab('CUSTOMER_PORTAL')}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-            isCustomerPortalActive
-              ? 'bg-indigo-600 text-white font-bold shadow-md'
-              : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <UserCheck className="w-4 h-4 text-indigo-400" />
-          <span>Customer Portal View</span>
-        </button>
-
-        <button
           onClick={onOpenAudit}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-emerald-400 hover:bg-emerald-950/40 border border-emerald-500/20 transition-all mt-2"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-emerald-400 hover:bg-emerald-950/40 border border-emerald-500/20 transition-all"
         >
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
           <span>27-Pt System Audit Matrix</span>

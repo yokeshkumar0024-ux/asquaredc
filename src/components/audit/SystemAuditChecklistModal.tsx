@@ -26,16 +26,16 @@ const AUDIT_CHECKLIST: AuditItem[] = [
   },
   {
     id: 3,
-    module: '3. PO & SO Order Management',
+    module: '3. Direct Challan Generation & Dispatch',
     status: 'COMPLETED',
-    details: 'Direct "Generate Challan" from Sales Orders/Purchase Orders, maintaining relationships and remaining quantities.',
+    details: 'Streamlined direct challan creation with instant item allocation, automated backorders, and multi-vehicle dispatch.',
     testVerified: true,
   },
   {
     id: 4,
-    module: '4. Supplier / Vendor Management',
+    module: '4. Direct Consignee & Supplier Dispatch',
     status: 'COMPLETED',
-    details: 'Supplier master with GSTIN, PAN, Bank RTGS details, and supplier-wise job work & return transaction history.',
+    details: 'Frictionless inline consignee entry with instant GSTIN, state code validation, and site delivery address support.',
     testVerified: true,
   },
   {
@@ -96,9 +96,9 @@ const AUDIT_CHECKLIST: AuditItem[] = [
   },
   {
     id: 13,
-    module: '13. Dedicated Customer Portal Mode',
+    module: '13. Public QR Consignment Verification',
     status: 'COMPLETED',
-    details: 'Isolated customer view with tenant restrictions, allowing them to track consignments, download PDFs, and submit POD.',
+    details: 'Secure QR scan verification page for transporters, drivers, and consignees with non-confidential item details.',
     testVerified: true,
   },
   {
@@ -175,7 +175,7 @@ const AUDIT_CHECKLIST: AuditItem[] = [
     id: 24,
     module: '24. Security, Audit Trail & Integrity',
     status: 'COMPLETED',
-    details: 'Immutable audit logging on every action, role-based user switching, soft deletion, and non-destructive workflows.',
+    details: 'Immutable audit logging on every action, administrator authority checks, soft deletion, and non-destructive workflows.',
     testVerified: true,
   },
   {

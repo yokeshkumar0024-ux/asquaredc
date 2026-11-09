@@ -16,32 +16,21 @@ interface HeaderProps {
   companies: Company[];
   activeCompanyId: string;
   onCompanyChange: (id: string) => void;
-  currentUser: User;
-  onUserChange: (user: User) => void;
   unreadNotificationsCount: number;
   onOpenNotifications: () => void;
   onOpenAudit: () => void;
   onGlobalSearch: (term: string) => void;
-  isCustomerPortalActive: boolean;
-  onToggleCustomerPortal: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   companies,
   activeCompanyId,
   onCompanyChange,
-  currentUser,
-  onUserChange,
   unreadNotificationsCount,
   onOpenNotifications,
   onOpenAudit,
   onGlobalSearch,
-  isCustomerPortalActive,
-  onToggleCustomerPortal,
 }) => {
-  const users = ERPStorage.getUsers();
-  const currentCompany = companies.find((c) => c.id === activeCompanyId) || companies[0];
-
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-6 py-3 shadow-xs">
       <div className="flex items-center justify-between gap-4">
@@ -61,20 +50,27 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Tenant Switcher */}
+          {/* Tenant / Company Header Display */}
           <div className="hidden md:flex items-center gap-1.5 pl-4 border-l border-slate-200">
             <Building2 className="w-4 h-4 text-slate-400" />
-            <select
-              value={activeCompanyId}
-              onChange={(e) => onCompanyChange(e.target.value)}
-              className="text-xs font-bold text-slate-800 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg py-1.5 px-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            >
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.tradeName || c.name} (GSTIN: {c.gstin.slice(0, 5)}...)
-                </option>
-              ))}
-            </select>
+            {companies.length > 1 ? (
+              <select
+                value={activeCompanyId}
+                onChange={(e) => onCompanyChange(e.target.value)}
+                className="text-xs font-bold text-slate-800 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg py-1.5 px-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.tradeName || c.name} {c.gstin ? `(${c.gstin})` : ''}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="text-xs font-bold text-slate-800">
+                {companies[0]?.tradeName || companies[0]?.name || 'My Company'}
+                {companies[0]?.gstin ? ` (${companies[0].gstin})` : ''}
+              </span>
+            )}
           </div>
         </div>
 
@@ -91,20 +87,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Right: Actions, FY, Role Switcher & Notifications */}
+        {/* Right: Audit & Notifications */}
         <div className="flex items-center gap-3">
-          {/* Customer Portal Toggle */}
-          <button
-            onClick={onToggleCustomerPortal}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-              isCustomerPortalActive
-                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-            }`}
-          >
-            {isCustomerPortalActive ? 'Exit Customer View' : 'Customer Portal'}
-          </button>
-
           {/* 27-Point System Audit */}
           <button
             onClick={onOpenAudit}
@@ -127,30 +111,15 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* User & Role Switcher */}
-          <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
-            <div className="text-right hidden sm:block">
-              <span className="text-xs font-bold text-slate-900 block leading-tight">{currentUser.name}</span>
-              <span className="text-[10px] font-mono font-bold text-blue-600 block uppercase">
-                {currentUser.role.replace(/_/g, ' ')}
-              </span>
+          {/* Clean Admin Badge */}
+          <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
+            <div className="w-7 h-7 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center">
+              A
             </div>
-
-            <select
-              value={currentUser.id}
-              onChange={(e) => {
-                const matched = users.find((u) => u.id === e.target.value);
-                if (matched) onUserChange(matched);
-              }}
-              className="text-xs bg-slate-50 border border-slate-200 rounded-lg p-1.5 font-bold text-slate-700"
-              title="Switch Active Session Role"
-            >
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.role.replace(/_/g, ' ')} ({u.name.split(' ')[0]})
-                </option>
-              ))}
-            </select>
+            <div className="hidden sm:block">
+              <span className="text-xs font-bold text-slate-900 block leading-tight">Admin Console</span>
+              <span className="text-[10px] text-emerald-600 font-semibold block">Online</span>
+            </div>
           </div>
         </div>
       </div>

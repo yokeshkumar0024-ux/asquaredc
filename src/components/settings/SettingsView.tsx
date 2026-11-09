@@ -8,7 +8,6 @@ import {
   Hash,
   Percent,
   FileText,
-  Users,
   Database,
   Download,
   Upload,
@@ -21,17 +20,15 @@ import {
 export const SettingsView: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings>(() => ERPStorage.getSettings());
   const [activeTab, setActiveTab] = useState<
-    'COMPANY' | 'FINANCIAL_YEAR' | 'NUMBERING' | 'TAX' | 'PDF' | 'USERS' | 'BACKUP'
+    'COMPANY' | 'FINANCIAL_YEAR' | 'NUMBERING' | 'TAX' | 'PDF' | 'BACKUP'
   >('COMPANY');
   const [restoreJson, setRestoreJson] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const users = ERPStorage.getUsers();
-  const backups = ERPStorage.getBackups();
-
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     ERPStorage.saveSettings(settings);
+    ERPStorage.saveCompany(settings.company);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   };
@@ -134,16 +131,6 @@ export const SettingsView: React.FC = () => {
           }`}
         >
           <FileText className="w-3.5 h-3.5" /> PDF Challan Template
-        </button>
-        <button
-          onClick={() => setActiveTab('USERS')}
-          className={`py-3 px-4 border-b-2 flex items-center gap-1.5 transition-all shrink-0 ${
-            activeTab === 'USERS'
-              ? 'border-blue-600 text-blue-600 bg-white'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Users className="w-3.5 h-3.5" /> Users & RBAC
         </button>
         <button
           onClick={() => setActiveTab('BACKUP')}
@@ -517,46 +504,7 @@ export const SettingsView: React.FC = () => {
           </form>
         )}
 
-        {/* Tab 6: Users & RBAC */}
-        {activeTab === 'USERS' && (
-          <div className="space-y-4 text-xs">
-            <h4 className="font-bold text-slate-800 text-sm">Role-Based Access Control (RBAC) Master</h4>
-            <div className="border border-slate-200 rounded-2xl overflow-hidden">
-              <table className="w-full text-left">
-                <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
-                  <tr>
-                    <th className="p-3">User Full Name</th>
-                    <th className="p-3">Official Email</th>
-                    <th className="p-3">Assigned Role</th>
-                    <th className="p-3">Department</th>
-                    <th className="p-3 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {users.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50">
-                      <td className="p-3 font-bold text-slate-900">{u.name}</td>
-                      <td className="p-3 text-slate-600 font-mono">{u.email}</td>
-                      <td className="p-3">
-                        <span className="font-mono font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded">
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="p-3 text-slate-600">{u.department}</td>
-                      <td className="p-3 text-center">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                          Active
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 7: Backup & Restore */}
+        {/* Tab 6: Backup & Restore */}
         {activeTab === 'BACKUP' && (
           <div className="space-y-6 max-w-2xl text-xs">
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">

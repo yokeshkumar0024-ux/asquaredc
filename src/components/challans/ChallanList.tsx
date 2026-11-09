@@ -197,9 +197,20 @@ export const ChallanList: React.FC<ChallanListProps> = ({
             <tbody className="divide-y divide-slate-100">
               {filteredChallans.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center text-slate-400">
-                    <p className="text-sm font-semibold">No Delivery Challans found</p>
-                    <p className="text-xs text-slate-400 mt-1">Try adjusting your filters or search terms</p>
+                  <td colSpan={8} className="p-12 text-center text-slate-500">
+                    <Truck className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm font-bold text-slate-800">No Delivery Challans Found</p>
+                    <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                      {challans.length === 0
+                        ? 'Your delivery register is empty. Click below to create your first consignment challan.'
+                        : 'No documents match the current filter or search criteria.'}
+                    </p>
+                    <button
+                      onClick={onNewChallan}
+                      className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-md"
+                    >
+                      <Plus className="w-4 h-4" /> Create Delivery Challan
+                    </button>
                   </td>
                 </tr>
               ) : (

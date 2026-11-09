@@ -166,7 +166,18 @@ export const ReturnManagementView: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {returns.map((ret) => {
+            {returns.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="p-12 text-center text-slate-500">
+                  <RotateCcw className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm font-bold text-slate-800">No Goods Returns Logged Yet</p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                    Customer returns, rejected materials, and job work returns with quality inspection status will be listed here.
+                  </p>
+                </td>
+              </tr>
+            ) : (
+              returns.map((ret) => {
               const item = ret.items[0];
               const isPending = ret.qualityInspectionStatus === 'PENDING_INSPECTION';
 
@@ -237,7 +248,8 @@ export const ReturnManagementView: React.FC = () => {
                   </td>
                 </tr>
               );
-            })}
+            })
+          )}
           </tbody>
         </table>
       </div>

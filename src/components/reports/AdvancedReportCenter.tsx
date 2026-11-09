@@ -64,7 +64,7 @@ export const AdvancedReportCenter: React.FC = () => {
 
       case 'CUSTOMER_DELIVERY_REGISTER':
         return challans
-          .filter((c) => c.customerId)
+          .filter((c) => c.customerName)
           .map((c) => ({
             col1: c.challanNumber,
             col2: formatDateIN(c.challanDate),
@@ -78,7 +78,7 @@ export const AdvancedReportCenter: React.FC = () => {
 
       case 'SUPPLIER_DELIVERY_REGISTER':
         return challans
-          .filter((c) => c.supplierId)
+          .filter((c) => c.supplierName)
           .map((c) => ({
             col1: c.challanNumber,
             col2: formatDateIN(c.challanDate),
